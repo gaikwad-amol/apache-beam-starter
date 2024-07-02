@@ -24,6 +24,10 @@ dependencies {
 
     testCompileOnly 'org.projectlombok:lombok:1.18.34'
     testAnnotationProcessor 'org.projectlombok:lombok:1.18.34'
+
+    // read files from gs
+    implementation 'org.apache.beam:beam-sdks-java-io-google-cloud-platform:2.57.0'
+    implementation 'com.google.cloud:google-cloud-storage:2.40.1'
 }
 
 test {
@@ -47,6 +51,16 @@ task runCsvReadLogMainClass(type: JavaExec) {
 
 task runInMemoryPCollectionMainClass(type: JavaExec) {
     mainClass.set('com.test.InMemoryPCollection')
+    classpath = sourceSets.main.runtimeClasspath
+    doFirst {
+        if (project.hasProperty('appArgs')) {
+            args project.property('appArgs').split(',')
+        }
+    }
+}
+
+task runReadPoemAndSampleOutputMainClass(type: JavaExec) {
+    mainClass.set('com.test.ReadPoemAndSampleOutput')
     classpath = sourceSets.main.runtimeClasspath
     doFirst {
         if (project.hasProperty('appArgs')) {

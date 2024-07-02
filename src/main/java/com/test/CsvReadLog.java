@@ -21,6 +21,7 @@ public class CsvReadLog {
     @Description("Path of the file to read from")
     @Default.String("src/main/resources/TaxiOrderData.csv")
     String getInputFile();
+
     void setInputFile(String value);
 
     @Description("Path of the file to write to")
@@ -29,6 +30,7 @@ public class CsvReadLog {
 
     void setOutput(String value);
   }
+
   public static void main(String[] args) {
     log.info("running the pipeline with args {}", Arrays.toString(args));
     MyOptions options = PipelineOptionsFactory.fromArgs(args).withValidation().as(MyOptions.class);
