@@ -34,7 +34,7 @@ public class ReadPoemAndSampleOutput {
 
     PTransform<PCollection<String>, PCollection<Iterable<String>>> sample = Sample.fixedSizeGlobally(10);
 
-    lines
+    PCollection<String> sampleLines = lines
       .apply(sample)
       .apply(Flatten.iterables())
       .apply("Log lines", ParDo.of(new Transforms.LogStrings()));
@@ -43,9 +43,12 @@ public class ReadPoemAndSampleOutput {
       .apply(FlatMapElements.into(TypeDescriptors.strings()).via((String line) -> Arrays.asList(line.split("[^\\p{L}]+"))))
       .apply(Filter.by((String word) -> !word.isEmpty()));
 
-    words.apply(sample)
+    PCollection<String> sampleWords = words.apply(sample)
       .apply(Flatten.iterables())
       .apply("Log words", ParDo.of(new Transforms.LogStrings()));
+
+    sampleLines.apply(TextIO.write().to("sample-lines"));
+    sampleWords.apply(TextIO.write().to("sample-words"));
 
     pipeline.run().waitUntilFinish();
   }
