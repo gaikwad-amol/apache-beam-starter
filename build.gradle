@@ -1,0 +1,62 @@
+plugins {
+    id 'java'
+    id 'application'
+}
+
+group = 'algos'
+version = '1.0-SNAPSHOT'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    testImplementation platform('org.junit:junit-bom:5.10.2')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    implementation "org.apache.beam:beam-sdks-java-core:2.57.0"
+    implementation "org.apache.beam:beam-runners-direct-java:2.57.0"
+    implementation 'com.google.guava:guava:33.2.1-jre'
+    implementation 'org.slf4j:slf4j-api:2.0.12'
+    implementation 'ch.qos.logback:logback-classic:1.4.12'
+
+    compileOnly 'org.projectlombok:lombok:1.18.34'
+    annotationProcessor 'org.projectlombok:lombok:1.18.34'
+
+    testCompileOnly 'org.projectlombok:lombok:1.18.34'
+    testAnnotationProcessor 'org.projectlombok:lombok:1.18.34'
+}
+
+test {
+    useJUnitPlatform()
+}
+
+
+application {
+    mainClass = 'com.test.CsvReadLog' // Default main class
+}
+
+task runCsvReadLogMainClass(type: JavaExec) {
+    mainClass.set('com.test.CsvReadLog')
+    classpath = sourceSets.main.runtimeClasspath
+    doFirst {
+        if (project.hasProperty('appArgs')) {
+            args project.property('appArgs').split(',')
+        }
+    }
+}
+
+// Package a self-contained jar file.
+jar {
+    archiveBaseName = 'pipeline'
+    destinationDirectory = file('build')
+    manifest {
+        attributes 'Main-Class': 'com.test.CsvReadLog'
+    }
+    exclude 'META-INF/*.SF'
+    exclude 'META-INF/*.DSA'
+    exclude 'META-INF/*.RSA'
+    duplicatesStrategy = DuplicatesStrategy.INCLUDE
+    from {
+        configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
+    }
+}
