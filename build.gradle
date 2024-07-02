@@ -45,6 +45,16 @@ task runCsvReadLogMainClass(type: JavaExec) {
     }
 }
 
+task runInMemoryPCollectionMainClass(type: JavaExec) {
+    mainClass.set('com.test.InMemoryPCollection')
+    classpath = sourceSets.main.runtimeClasspath
+    doFirst {
+        if (project.hasProperty('appArgs')) {
+            args project.property('appArgs').split(',')
+        }
+    }
+}
+
 // Package a self-contained jar file.
 jar {
     archiveBaseName = 'pipeline'
