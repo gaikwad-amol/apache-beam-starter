@@ -1,6 +1,6 @@
 package com.test;
 
-import com.test.transforms.Transforms;
+import com.test.transforms.LogUtilTransforms;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.io.TextIO;
 import org.apache.beam.sdk.options.Default;
@@ -37,7 +37,7 @@ public class ReadPoemAndSampleOutput {
     PCollection<String> sampleLines = lines
       .apply(sample)
       .apply(Flatten.iterables())
-      .apply("Log lines", ParDo.of(new Transforms.LogStrings()));
+      .apply("Log lines", ParDo.of(new LogUtilTransforms.LogStrings()));
 
     PCollection<String> words = lines
       .apply(FlatMapElements.into(TypeDescriptors.strings()).via((String line) -> Arrays.asList(line.split("[^\\p{L}]+"))))
@@ -45,7 +45,7 @@ public class ReadPoemAndSampleOutput {
 
     PCollection<String> sampleWords = words.apply(sample)
       .apply(Flatten.iterables())
-      .apply("Log words", ParDo.of(new Transforms.LogStrings()));
+      .apply("Log words", ParDo.of(new LogUtilTransforms.LogStrings()));
 
     sampleLines.apply(TextIO.write().to("sample-lines"));
     sampleWords.apply(TextIO.write().to("sample-words"));

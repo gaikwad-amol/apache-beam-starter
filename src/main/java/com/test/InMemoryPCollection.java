@@ -1,6 +1,6 @@
 package com.test;
 
-import com.test.transforms.Transforms;
+import com.test.transforms.LogUtilTransforms;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.options.PipelineOptions;
@@ -24,13 +24,13 @@ public class InMemoryPCollection {
       .apply("CreateStrings",
         Create.of("To", "be", "or", "not", "to", "be", "that", "is", "the", "question")
       )
-      .apply("LogStrings", ParDo.of(new Transforms.LogStrings()));
+      .apply("LogStrings", ParDo.of(new LogUtilTransforms.LogStrings()));
 
     PCollection<Integer> integers = pipeline
       .apply("CreateIntegers",
         Create.of(1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
       )
-      .apply("LogIntegers", ParDo.of(new Transforms.LogIntegers()));
+      .apply("LogIntegers", ParDo.of(new LogUtilTransforms.LogIntegers()));
 
     //-----------------------
     // Sum global example
@@ -38,7 +38,7 @@ public class InMemoryPCollection {
       .apply("CreateIntegers",
         Create.of(1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
       ).apply(Sum.integersGlobally())
-      .apply("LogIntegers", ParDo.of(new Transforms.LogIntegers()));
+      .apply("LogIntegers", ParDo.of(new LogUtilTransforms.LogIntegers()));
 
     //-----------------------
     // Sum per key example

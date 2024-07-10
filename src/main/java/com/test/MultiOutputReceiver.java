@@ -1,6 +1,6 @@
 package com.test;
 
-import com.test.transforms.Transforms;
+import com.test.transforms.LogUtilTransforms;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.options.PipelineOptions;
@@ -28,8 +28,8 @@ public class MultiOutputReceiver {
     };
 
     PCollectionTuple pCollectionTuple = applyTransform(numbers, numbersBelow100, numbersAbove100);
-    pCollectionTuple.get(numbersBelow100).apply("LogNumbers < 100", ParDo.of(new Transforms.LogIntegers("Number < 100")));
-    pCollectionTuple.get(numbersAbove100).apply("LogNumbers > 100", ParDo.of(new Transforms.LogIntegers("Number > 100")));
+    pCollectionTuple.get(numbersBelow100).apply("LogNumbers < 100", ParDo.of(new LogUtilTransforms.LogIntegers("Number < 100")));
+    pCollectionTuple.get(numbersAbove100).apply("LogNumbers > 100", ParDo.of(new LogUtilTransforms.LogIntegers("Number > 100")));
 
 
     pipeline.run().waitUntilFinish();
