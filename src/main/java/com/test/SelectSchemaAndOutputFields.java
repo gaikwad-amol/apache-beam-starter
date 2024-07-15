@@ -10,15 +10,19 @@ import org.apache.beam.sdk.schemas.JavaFieldSchema;
 import org.apache.beam.sdk.schemas.Schema;
 import org.apache.beam.sdk.schemas.annotations.DefaultSchema;
 import org.apache.beam.sdk.schemas.annotations.SchemaCreate;
+import org.apache.beam.sdk.schemas.transforms.Group;
 import org.apache.beam.sdk.schemas.transforms.Select;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.Flatten;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.Sample;
+import org.apache.beam.sdk.transforms.Sum;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.Row;
 import org.apache.beam.sdk.values.TypeDescriptor;
+
+import java.util.Arrays;
 
 @Slf4j
 public class SelectSchemaAndOutputFields {
@@ -26,12 +30,12 @@ public class SelectSchemaAndOutputFields {
   @DefaultSchema(JavaFieldSchema.class)
   public static class Game {
     public String userId;
-    public String score;
+    public Integer score;
     public String gameId;
     public String date;
 
     @SchemaCreate
-    public Game(String userId, String score, String gameId, String date) {
+    public Game(String userId, Integer score, String gameId, String date) {
       this.userId = userId;
       this.score = score;
       this.gameId = gameId;
@@ -84,7 +88,7 @@ public class SelectSchemaAndOutputFields {
 
     Schema gameSchema = Schema.builder()
       .addStringField("userId")
-      .addStringField("score")
+      .addInt32Field("score")
       .addStringField("gameId")
       .addStringField("date")
       .build();
@@ -100,25 +104,25 @@ public class SelectSchemaAndOutputFields {
     final PTransform<PCollection<String>, PCollection<Iterable<String>>> sample = Sample.fixedSizeGlobally(10);
     PCollection<String> sampleData = gamingData.apply(sample).apply(Flatten.iterables());
 
-    PCollection<User> users = sampleData.apply(ParDo.of(new ExtractUserProgressFn()))
+    PCollection<User> users = gamingData.apply(ParDo.of(new ExtractUserProgressFn()))
       .setSchema(dataSchema, TypeDescriptor.of(User.class), row -> {
-        User user = row;
-        Game game = user.game;
+          User user = row;
+          Game game = user.game;
 
-        Row gameRow = Row.withSchema(gameSchema)
-          .addValues(game.userId, game.score, game.gameId, game.date).build();
+          Row gameRow = Row.withSchema(gameSchema)
+            .addValues(game.userId, game.score, game.gameId, game.date).build();
 
-        return Row.withSchema(dataSchema).addValues(user.userId, user.userName, gameRow).build();
-      }, row -> {
-        String userId = row.getValue("userId");
-        String userName = row.getValue("userName");
-        Row game = row.getValue("game");
+          return Row.withSchema(dataSchema).addValues(user.userId, user.userName, gameRow).build();
+        }, row -> {
+          String userId = row.getValue("userId");
+          String userName = row.getValue("userName");
+          Row game = row.getValue("game");
 
-        String gameId = game.getValue("gameId");
-        String gameScore = game.getValue("score");
-        String gameDate = game.getValue("date");
-        return new User(userId,userName,
-          new Game(userId,gameScore,gameId,gameDate));
+          String gameId = game.getValue("gameId");
+          Integer gameScore = game.getValue("score");
+          String gameDate = game.getValue("date");
+          return new User(userId, userName,
+            new Game(userId, gameScore, gameId, gameDate));
         }
       );
     PCollection<Row> shortInfoSchemaCollection = users.apply(Select.<User>fieldNames("userId", "userName").withOutputSchema(shortInfoSchema));
@@ -131,6 +135,14 @@ public class SelectSchemaAndOutputFields {
       .apply(Select.flattenedSchema())
       .apply("User flatten row", ParDo.of(new LogUtilTransforms.LogOutput<>()));
 
+    //Group by example
+    PCollection<Row> games = users.apply(Select.fieldNames("userId", "game.score"));
+
+    PCollection<Row> groupedRows = games
+      .apply(Group.<Row>byFieldNames("userId").aggregateField("score", Sum.ofIntegers(), "totalScore"));
+    groupedRows.apply("Grouped Game", ParDo.of(new LogUtilTransforms.LogOutput<>()));
+    // --------------
+
     pipeline.run().waitUntilFinish();
   }
 
@@ -139,8 +151,12 @@ public class SelectSchemaAndOutputFields {
     @ProcessElement
     public void processElement(@Element String row, OutputReceiver<User> out) {
       String[] items = row.split(",");
-      out.output(new User(items[0], items[1], new Game(items[0], items[2], items[3], items[4])));
+      try {
+        out.output(new User(items[0], items[1], new Game(items[0], Integer.parseInt(items[2]), items[3], items[4])));
+
+      } catch (ClassCastException e) {
+        log.error("err is for {}", Arrays.toString(items));
+      }
     }
   }
-
 }
