@@ -5,10 +5,11 @@ import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.io.TextIO;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.schemas.Schema;
+import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.Filter;
 import org.apache.beam.sdk.transforms.MapElements;
+import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.SerializableFunction;
-import org.apache.beam.sdk.transforms.windowing.AfterPane;
 import org.apache.beam.sdk.transforms.windowing.AfterProcessingTime;
 import org.apache.beam.sdk.transforms.windowing.FixedWindows;
 import org.apache.beam.sdk.transforms.windowing.Repeatedly;
@@ -25,8 +26,8 @@ import org.joda.time.Duration;
 import org.joda.time.Instant;
 import org.apache.beam.sdk.extensions.sql.SqlTransform;
 
-import java.time.LocalDate;
-import java.time.ZoneId;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.Objects;
 
@@ -46,9 +47,9 @@ public class FinalChallenge1 {
     .build();
   private static final String HEADER = "ProductNo,TotalAmount";
   private static final String REGEX_FOR_CSV = ",(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)";
-  private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("M/d/yyyy");
+  private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
   private static final long TIME_OUTPUT_AFTER_FIRST_ELEMENT = 5;
-  public static final int WINDOW_TIME = 30;
+  public static final int WINDOW_TIME = 3;
 
   public static void main(String[] args) {
     CustomOptions customOptions = PipelineOptionsFactory.fromArgs(args).withValidation().as(CustomOptions.class);
@@ -59,13 +60,14 @@ public class FinalChallenge1 {
     //TransactionNo,Date,ProductNo,ProductName,Price,Quantity,CustomerNo,Country
     Schema schema = createSchema();
 
-    PCollection<Row> tableRows = input
+    PCollection<Row> oldtableRows = input
       .apply(MapElements.into(TypeDescriptors.rows())
         .via(extractRow(schema)))
       .setRowSchema(schema)
       .apply(Filter.by(Objects::nonNull));
+    PCollection<Row> tableRows = applyTimeStamp(oldtableRows).setRowSchema(schema);
 
-    Window<Row> window = Window.into(FixedWindows.of(Duration.standardSeconds(WINDOW_TIME)));
+    Window<Row> window = Window.into(FixedWindows.of(Duration.standardHours(WINDOW_TIME)));
     Trigger trigger = AfterProcessingTime.pastFirstElementInPane().plusDelayOf(Duration.standardSeconds(TIME_OUTPUT_AFTER_FIRST_ELEMENT));
 
     PCollection<Row> windowedRows = tableRows
@@ -98,6 +100,17 @@ public class FinalChallenge1 {
 
   }
 
+  static PCollection<Row> applyTimeStamp(PCollection<Row> input) {
+    return input.apply(ParDo.of(new DoFn<Row, Row>() {
+
+      @ProcessElement
+      public void processElement(@Element Row row, OutputReceiver<Row> out) {
+        Instant instant = row.getValue("Date");
+        out.outputWithTimestamp(row, instant);
+      }
+    }));
+    }
+
   private static @NotNull Schema createSchema() {
     return Schema.builder()
       .addInt32Field("TransactionNo")
@@ -116,8 +129,8 @@ public class FinalChallenge1 {
       try {
         String[] values = line.split(REGEX_FOR_CSV);
 
-        LocalDate date = LocalDate.parse(values[1], FORMATTER);
-        java.time.Instant javaInstant = date.atStartOfDay(ZoneId.systemDefault()).toInstant();
+        LocalDateTime dateTime = LocalDateTime.parse(values[1], FORMATTER);
+        java.time.Instant javaInstant = dateTime.toInstant(ZoneOffset.UTC);
         Instant jodaInstant = new Instant(javaInstant.toEpochMilli());
 
         int transactionNo = Integer.parseInt(values[0]);
