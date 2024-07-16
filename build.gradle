@@ -28,6 +28,10 @@ dependencies {
     // read files from gs
     implementation 'org.apache.beam:beam-sdks-java-io-google-cloud-platform:2.57.0'
     implementation 'com.google.cloud:google-cloud-storage:2.40.1'
+    implementation 'org.apache.beam:beam-sdks-java-extensions-sql:2.57.0'
+
+    implementation 'joda-time:joda-time:2.12.7'
+
 }
 
 test {
